@@ -4,7 +4,7 @@ import { Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 
 interface FileUploadProps {
-    onFileSelect: (file: File) => void;
+    onFileSelect: (files: File[]) => void;
 }
 
 export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
@@ -21,7 +21,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
         setIsDragging(false);
     }, []);
 
-    const validateAndProcessFile = (file: File) => {
+    const validateFiles = (fileList: FileList | File[]): File[] => {
         setError(null);
         const validTypes = [
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
@@ -29,15 +29,25 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
             'text/csv' // .csv
         ];
 
-        // Some browsers might have empty type for csv/xlsx, so we check extension too
-        const extension = file.name.split('.').pop()?.toLowerCase();
-        const isValidExtension = ['xlsx', 'xls', 'csv'].includes(extension || '');
+        const validFiles: File[] = [];
+        let hasInvalid = false;
 
-        if (validTypes.includes(file.type) || isValidExtension) {
-            onFileSelect(file);
-        } else {
-            setError('Please upload a valid Excel (.xlsx, .xls) or CSV file.');
+        Array.from(fileList).forEach(file => {
+            const extension = file.name.split('.').pop()?.toLowerCase();
+            const isValidExtension = ['xlsx', 'xls', 'csv'].includes(extension || '');
+
+            if (validTypes.includes(file.type) || isValidExtension) {
+                validFiles.push(file);
+            } else {
+                hasInvalid = true;
+            }
+        });
+
+        if (hasInvalid) {
+            setError('Some files were skipped. Please upload valid Excel (.xlsx, .xls) or CSV files.');
         }
+
+        return validFiles;
     };
 
     const handleDrop = useCallback((e: React.DragEvent) => {
@@ -45,13 +55,19 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
         setIsDragging(false);
 
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            validateAndProcessFile(e.dataTransfer.files[0]);
+            const validFiles = validateFiles(e.dataTransfer.files);
+            if (validFiles.length > 0) {
+                onFileSelect(validFiles);
+            }
         }
     }, [onFileSelect]);
 
     const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
-            validateAndProcessFile(e.target.files[0]);
+            const validFiles = validateFiles(e.target.files);
+            if (validFiles.length > 0) {
+                onFileSelect(validFiles);
+            }
         }
     };
 
@@ -77,6 +93,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                     id="file-input"
                     className="hidden"
                     accept=".csv,.xlsx,.xls"
+                    multiple
                     onChange={handleFileInput}
                 />
 
@@ -94,10 +111,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
 
                     <div>
                         <h3 className="text-xl font-semibold text-slate-800 mb-2">
-                            {isDragging ? "Drop file here" : "Upload Schedule"}
+                            {isDragging ? "Drop files here" : "Upload Schedules"}
                         </h3>
                         <p className="text-slate-500 text-sm max-w-xs mx-auto">
-                            Drag and drop your Excel or CSV file here, or click to browse.
+                            Drag and drop your Excel or CSV files here, or click to browse.
                         </p>
                     </div>
                 </div>

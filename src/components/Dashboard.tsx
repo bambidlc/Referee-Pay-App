@@ -8,11 +8,12 @@ interface DashboardProps {
     arbitrators: ArbitratorStats[];
     rates: Record<string, number>;
     categories: string[];
+    dateRange?: { start: string; end: string };
     onRateChange: (category: string, newRate: number) => void;
     onReset: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ arbitrators, rates, categories, onRateChange, onReset }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ arbitrators, rates, categories, dateRange, onRateChange, onReset }) => {
 
     const calculatedData = useMemo(() => {
         return arbitrators.map(arb => {
@@ -62,7 +63,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ arbitrators, rates, catego
         const ws = utils.json_to_sheet(exportData);
         const wb = utils.book_new();
         utils.book_append_sheet(wb, ws, "Payroll Report");
-        writeFile(wb, "Referee_Payroll_Report.xlsx");
+        
+        let filename = "Referee_Payroll_Report.xlsx";
+        if (dateRange?.start && dateRange?.end) {
+            filename = `Payroll_Report_${dateRange.start}_to_${dateRange.end}.xlsx`;
+        }
+        
+        writeFile(wb, filename);
     };
 
     return (
@@ -137,7 +144,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ arbitrators, rates, catego
             {/* Main Table */}
             <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/50 overflow-hidden border border-slate-100">
                 <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <h2 className="text-xl font-bold text-slate-800">Payroll Details</h2>
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800">Payroll Details</h2>
+                        {dateRange?.start && dateRange?.end && (
+                            <p className="text-sm text-slate-500 mt-1">
+                                Period: {dateRange.start} - {dateRange.end}
+                            </p>
+                        )}
+                    </div>
                     <div className="flex gap-3">
                         <button
                             onClick={onReset}
