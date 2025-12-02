@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FileUpload } from './components/FileUpload';
 import { RateConfig } from './components/RateConfig';
 import { Dashboard } from './components/Dashboard';
+import { HistoryDrawer } from './components/HistoryDrawer';
 import { parseSchedule, type ArbitratorStats } from './utils/parser';
-import { Loader2, Calendar, Clock, History, Plus, Trash2, FileText, ArrowRight, X } from 'lucide-react';
-import clsx from 'clsx';
+import { Loader2, Calendar, History, Plus, FileText, ArrowRight, X } from 'lucide-react';
 
-interface HistoryItem {
+export interface HistoryItem {
   id: string;
   timestamp: number;
   dateRange: { start: string; end: string };
@@ -22,6 +22,7 @@ interface HistoryItem {
 function App() {
   const [step, setStep] = useState<'upload' | 'date' | 'config' | 'dashboard'>('upload');
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   
   // Current Batch State
   const [currentFiles, setCurrentFiles] = useState<File[]>([]);
@@ -212,7 +213,7 @@ function App() {
         <div className="absolute -bottom-8 left-1/3 w-96 h-96 bg-pink-200/20 rounded-full blur-3xl mix-blend-multiply animate-blob animation-delay-4000" />
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 py-12">
+      <div className="relative z-10 w-full px-6 py-8">
         <header className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
             <div className="text-center md:text-left">
                 <motion.h1
@@ -227,76 +228,47 @@ function App() {
                 <p className="text-slate-500 text-sm mt-1">Automated Payroll System</p>
             </div>
 
-            {step === 'dashboard' && (
-                 <motion.button
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    onClick={handleStartNew}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors shadow-lg shadow-primary-600/20"
-                 >
-                     <Plus className="w-5 h-5" />
-                     New Process
-                 </motion.button>
-            )}
+            <div className="flex items-center gap-3">
+                 {(history.length > 0 || step === 'dashboard') && (
+                    <motion.button
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        onClick={() => setIsHistoryOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-600 rounded-xl hover:bg-slate-50 hover:text-primary-600 transition-colors border border-slate-200 font-medium shadow-sm"
+                    >
+                         <History className="w-5 h-5" />
+                         History
+                    </motion.button>
+                 )}
+
+                 {step === 'dashboard' && (
+                     <motion.button
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        onClick={handleStartNew}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors shadow-lg shadow-primary-600/20"
+                     >
+                         <Plus className="w-5 h-5" />
+                         New Process
+                     </motion.button>
+                 )}
+            </div>
         </header>
 
-        <main className="grid grid-cols-1 lg:grid-cols-4 gap-8 min-h-[600px]">
+        <main className="w-full min-h-[600px]">
            
-           {/* Sidebar / History */}
-           {(step === 'dashboard' || history.length > 0) && (
-               <div className="lg:col-span-1 order-2 lg:order-1">
-                   <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 border border-slate-200 shadow-sm h-full">
-                       <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                           <History className="w-5 h-5 text-primary-500" />
-                           History
-                       </h2>
-                       
-                       <div className="space-y-3">
-                           {history.length === 0 ? (
-                               <p className="text-slate-400 text-sm italic">No history yet.</p>
-                           ) : (
-                               history.map(item => (
-                                   <div 
-                                       key={item.id}
-                                       onClick={() => handleSelectHistory(item)}
-                                       className={clsx(
-                                           "p-4 rounded-2xl cursor-pointer transition-all border relative group",
-                                           selectedHistoryId === item.id 
-                                            ? "bg-primary-50 border-primary-200 shadow-sm"
-                                            : "bg-slate-50 border-transparent hover:bg-white hover:border-slate-200"
-                                       )}
-                                   >
-                                       <div className="flex justify-between items-start mb-2">
-                                           <span className="text-xs font-medium text-slate-400 flex items-center gap-1">
-                                               <Clock className="w-3 h-3" />
-                                               {new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                           </span>
-                                           <button 
-                                                onClick={(e) => handleDeleteHistory(item.id, e)}
-                                                className="text-slate-300 hover:text-red-500 transition-colors p-1 opacity-0 group-hover:opacity-100"
-                                            >
-                                               <Trash2 className="w-4 h-4" />
-                                           </button>
-                                       </div>
-                                       <p className="font-semibold text-slate-800 text-sm mb-1">
-                                           {item.dateRange.start} - {item.dateRange.end}
-                                       </p>
-                                       <p className="text-xs text-slate-500 truncate">
-                                           {item.files.length} file{item.files.length !== 1 ? 's' : ''}
-                                       </p>
-                                   </div>
-                               ))
-                           )}
-                       </div>
-                   </div>
-               </div>
-           )}
+           {/* History Drawer */}
+           <HistoryDrawer 
+                isOpen={isHistoryOpen}
+                onClose={() => setIsHistoryOpen(false)}
+                history={history}
+                selectedId={selectedHistoryId}
+                onSelect={handleSelectHistory}
+                onDelete={handleDeleteHistory}
+           />
 
            {/* Main Content Area */}
-           <div className={clsx(
-               "order-1 lg:order-2",
-               (step === 'dashboard' || history.length > 0) ? "lg:col-span-3" : "lg:col-span-4 max-w-4xl mx-auto w-full"
-           )}>
+           <div className="w-full max-w-full">
               <AnimatePresence mode="wait">
                 {isLoading ? (
                   <motion.div

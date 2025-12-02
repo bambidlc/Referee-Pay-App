@@ -76,7 +76,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ arbitrators, rates, catego
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="w-full max-w-7xl mx-auto space-y-8"
+            className="w-full space-y-8"
         >
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
