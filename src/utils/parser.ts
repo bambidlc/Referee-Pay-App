@@ -55,6 +55,14 @@ export const parseSchedule = async (file: File): Promise<ParseResult> => {
     // elif cat.endswith('uF'): return int(cat[:-2]) + 0.5
     const sortCategories = (a: string, b: string) => {
         const getVal = (cat: string) => {
+            const lower = cat.toLowerCase();
+            if (lower.includes('mini')) return 100;
+            if (lower.includes('infantil')) return 101;
+            if (lower.includes('juvenil')) return 102;
+            if (lower.includes('junior')) return 103;
+            if (lower.includes('femenino')) return 104;
+            if (lower.includes('senior')) return 105;
+
             if (cat.endsWith('u')) return parseInt(cat.slice(0, -1));
             if (cat.endsWith('uF')) return parseInt(cat.slice(0, -2)) + 0.5;
             return 0;
