@@ -22,9 +22,10 @@ export const parseSchedule = async (file: File): Promise<ParseResult> => {
     const categories = new Set<string>();
 
     data.forEach((row) => {
-        // Logic from python script:
-        // if len(row) >= 5 and row[0] != 'TORNEO' and row[1] and row[2] and row[4]:
-        if (row.length >= 5 && row[0] !== 'TORNEO' && row[1] && row[2] && row[4]) {
+        // Updated logic:
+        // Column E is row[4] (Category)
+        // Referees are in Column B (row[1]), Column C (row[2]), and Column D (row[3])
+        if (row.length >= 5 && row[0] !== 'TORNEO' && row[1] && row[4]) {
             const category = String(row[4]).trim();
             categories.add(category);
 
@@ -47,6 +48,7 @@ export const parseSchedule = async (file: File): Promise<ParseResult> => {
 
             processArbitrators(row[1]); // Column B
             processArbitrators(row[2]); // Column C
+            processArbitrators(row[3]); // Column D
         }
     });
 
