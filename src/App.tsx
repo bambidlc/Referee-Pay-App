@@ -165,7 +165,9 @@ function App() {
 
             setHistory(prev => [newItem, ...prev]);
             setSelectedHistoryId(newItem.id);
-            setStep('dashboard');
+
+            // Go to config step first so user can verify/edit rates
+            setStep('config');
 
         } catch (error) {
             console.error("Error processing files:", error);
