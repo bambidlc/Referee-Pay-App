@@ -359,6 +359,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
       netPay: arb.calculation.netPay,
       usedFixedRate: arb.calculation.usedFixedRate,
       fixedRate: arb.calculation.fixedRate,
+      categories: arb.categories, // Store category breakdown
+      categoryRates: rates, // Store rates used for this batch
     }));
 
     const batch: PayrollBatchRecord = {
@@ -385,41 +387,72 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const handleExport = () => {
     // Export to Excel
+    // Collect all unique categories from all arbitrators
+    const allCategories = new Set<string>();
+    calculatedData.forEach(arb => {
+      Object.keys(arb.categories || {}).forEach(cat => allCategories.add(cat));
+    });
+    const categoryList = Array.from(allCategories).sort();
+
     const exportData = calculatedData.map(arb => {
       const row: Record<string, any> = {
         'Employee #': arb.employeeNumber || 'N/A',
         'Referee Name': arb.displayName || arb.name,
         'Games': arb.calculation.games,
         'Rate Type': arb.calculation.usedFixedRate ? `Fixed $${arb.calculation.fixedRate}` : 'Category',
-        'Gross Pay': arb.calculation.grossPay,
-        'Extra Pay': arb.calculation.extraPay,
-        'Total Earnings': arb.calculation.totalEarnings,
-        'Admin Fee': arb.calculation.adminFee,
-        'Fines': arb.calculation.fines,
-        'Taxable Income': arb.calculation.taxableIncome,
-        'Hacienda Tax (10%)': arb.calculation.haciendaTax,
-        'Deposit Fee': arb.calculation.depositFee,
-        'Net Pay': arb.calculation.netPay,
       };
+
+      // Add category columns with games count and rate
+      categoryList.forEach(cat => {
+        const count = arb.categories?.[cat] || 0;
+        const rate = rates[cat] || 0;
+        row[`${cat} (Games)`] = count;
+        row[`${cat} (Rate)`] = count > 0 ? `$${rate}` : '-';
+        row[`${cat} (Value)`] = count > 0 ? count * rate : 0;
+      });
+
+      // Add financial columns
+      row['Gross Pay'] = arb.calculation.grossPay;
+      row['Extra Pay'] = arb.calculation.extraPay;
+      row['Total Earnings'] = arb.calculation.totalEarnings;
+      row['Admin Fee'] = arb.calculation.adminFee;
+      row['Fines'] = arb.calculation.fines;
+      row['Taxable Income'] = arb.calculation.taxableIncome;
+      row['Hacienda Tax (10%)'] = arb.calculation.haciendaTax;
+      row['Deposit Fee'] = arb.calculation.depositFee;
+      row['Net Pay'] = arb.calculation.netPay;
+
       return row;
     });
 
     // Add totals row
-    exportData.push({
+    const totalsRow: Record<string, any> = {
       'Employee #': '',
       'Referee Name': 'TOTALS',
       'Games': stats.totalGames,
       'Rate Type': '',
-      'Gross Pay': stats.totalGross,
-      'Extra Pay': stats.totalExtra,
-      'Total Earnings': stats.totalGross + stats.totalExtra,
-      'Admin Fee': stats.totalAdminFees,
-      'Fines': stats.totalFines,
-      'Taxable Income': 'N/A', // Too complex to sum with YTD logic individually
-      'Hacienda Tax (10%)': stats.totalTax,
-      'Deposit Fee': stats.totalDeposit,
-      'Net Pay': stats.totalNet,
+    };
+
+    // Add category totals
+    categoryList.forEach(cat => {
+      const totalGames = calculatedData.reduce((sum, arb) => sum + (arb.categories?.[cat] || 0), 0);
+      const rate = rates[cat] || 0;
+      totalsRow[`${cat} (Games)`] = totalGames;
+      totalsRow[`${cat} (Rate)`] = `$${rate}`;
+      totalsRow[`${cat} (Value)`] = totalGames * rate;
     });
+
+    totalsRow['Gross Pay'] = stats.totalGross;
+    totalsRow['Extra Pay'] = stats.totalExtra;
+    totalsRow['Total Earnings'] = stats.totalGross + stats.totalExtra;
+    totalsRow['Admin Fee'] = stats.totalAdminFees;
+    totalsRow['Fines'] = stats.totalFines;
+    totalsRow['Taxable Income'] = 'N/A'; // Too complex to sum with YTD logic individually
+    totalsRow['Hacienda Tax (10%)'] = stats.totalTax;
+    totalsRow['Deposit Fee'] = stats.totalDeposit;
+    totalsRow['Net Pay'] = stats.totalNet;
+
+    exportData.push(totalsRow);
 
     const ws = utils.json_to_sheet(exportData);
     const wb = utils.book_new();

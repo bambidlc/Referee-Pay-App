@@ -111,6 +111,8 @@ export interface PayrollRefereeRecord {
   netPay: number;
   usedFixedRate: boolean;
   fixedRate?: number;
+  categories?: Record<string, number>; // Category breakdown (e.g., { "Senior": 3, "Junior": 2 })
+  categoryRates?: Record<string, number>; // Rate per category (e.g., { "Senior": 40, "Junior": 30 })
 }
 
 // === DEFAULT VALUES ===
