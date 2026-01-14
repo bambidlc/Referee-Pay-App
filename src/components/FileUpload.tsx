@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileSpreadsheet, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
@@ -10,6 +10,7 @@ interface FileUploadProps {
 export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const inputRef = useRef<HTMLInputElement | null>(null);
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -86,7 +87,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                onClick={() => document.getElementById('file-input')?.click()}
+                role="button"
+                tabIndex={0}
+                onClick={() => inputRef.current?.click()}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        inputRef.current?.click();
+                    }
+                }}
             >
                 <input
                     type="file"
@@ -94,6 +103,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
                     className="hidden"
                     accept=".csv,.xlsx,.xls"
                     multiple
+                    ref={inputRef}
                     onChange={handleFileInput}
                 />
 
