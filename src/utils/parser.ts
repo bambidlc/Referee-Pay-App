@@ -30,11 +30,11 @@ export const parseSchedule = async (file: File): Promise<ParseResult> => {
             categories.add(category);
 
             const processArbitrators = (cellValue: any) => {
-                if (!cellValue) return;
+                if (!cellValue || typeof cellValue === 'number') return;
                 const arbs = String(cellValue).split('/');
                 arbs.forEach((arb) => {
                     const name = arb.trim();
-                    if (!name) return;
+                    if (!name || /^\d+(\.\d+)?$/.test(name)) return;
 
                     if (!counts[name]) {
                         counts[name] = {};
