@@ -40,7 +40,38 @@ export interface GlobalPayrollSettings {
   haciendaTaxRate: number;        // Default 10% (0.10)
   depositFee: number;             // Default $1
   adminFeeAmount: number;         // Fixed at $2 per game (kept for display)
+  categoryRates: CategoryRates;   // Configurable rates per category
 }
+
+// Category rates for different game types
+export interface CategoryRates {
+  Senior: number;
+  Junior: number;
+  Juvenil: number;
+  Mini: number;
+  Infantil: number;
+  Femenino: number;
+  'U6-U8': number;
+  'U9-U11': number;
+  'U12-U14': number;
+  'U15-U16': number;
+  'U17-U18': number;
+}
+
+// Default category rates
+export const DEFAULT_CATEGORY_RATES: CategoryRates = {
+  Senior: 40,
+  Junior: 30,
+  Juvenil: 28,
+  Mini: 25,
+  Infantil: 20,
+  Femenino: 28,
+  'U6-U8': 25,
+  'U9-U11': 27,
+  'U12-U14': 29,
+  'U15-U16': 30,
+  'U17-U18': 35,
+};
 
 export interface PayrollExtraPay {
   [employeeNumber: string]: number; // Extra pay per referee for a specific batch
@@ -88,6 +119,7 @@ export const DEFAULT_GLOBAL_SETTINGS: GlobalPayrollSettings = {
   haciendaTaxRate: 0.10,  // 10%
   depositFee: 1.00,
   adminFeeAmount: ADMIN_FEE_PER_GAME,
+  categoryRates: DEFAULT_CATEGORY_RATES,
 };
 
 // === STORAGE FUNCTIONS ===
@@ -124,6 +156,53 @@ export const saveGlobalSettings = (global: GlobalPayrollSettings) => {
   const current = getStoredSettings();
   // Force admin fee to the fixed amount
   saveSettings({ ...current, global: { ...global, adminFeeAmount: ADMIN_FEE_PER_GAME } });
+};
+
+// Get category rates (with defaults for any missing)
+export const getCategoryRates = (): CategoryRates => {
+  const settings = getGlobalSettings();
+  return { ...DEFAULT_CATEGORY_RATES, ...settings.categoryRates };
+};
+
+// Save category rates
+export const saveCategoryRates = (rates: CategoryRates) => {
+  const current = getStoredSettings();
+  const updatedGlobal = { ...current.global, categoryRates: rates };
+  saveSettings({ ...current, global: updatedGlobal });
+  window.dispatchEvent(new Event('settings-updated'));
+};
+
+// Get rate for a specific category (used by App.tsx getDefaultRate)
+export const getCategoryRate = (category: string): number => {
+  const rates = getCategoryRates();
+  
+  // Direct match first
+  if (category in rates) {
+    return rates[category as keyof CategoryRates];
+  }
+  
+  // Try to match by parsing the category string (e.g., "12u" -> U12-U14)
+  const match = category.match(/(\d+)/);
+  if (match) {
+    const num = parseInt(match[1]);
+    
+    if (num >= 6 && num <= 8) return rates['U6-U8'];
+    if (num >= 9 && num <= 11) return rates['U9-U11'];
+    if (num >= 12 && num <= 14) return rates['U12-U14'];
+    if (num >= 15 && num <= 16) return rates['U15-U16'];
+    if (num >= 17 && num <= 19) return rates['U17-U18'];
+  }
+  
+  // Check for named categories (case-insensitive)
+  const lowerCat = category.toLowerCase();
+  if (lowerCat.includes('senior')) return rates.Senior;
+  if (lowerCat.includes('junior')) return rates.Junior;
+  if (lowerCat.includes('juvenil')) return rates.Juvenil;
+  if (lowerCat.includes('mini')) return rates.Mini;
+  if (lowerCat.includes('infantil')) return rates.Infantil;
+  if (lowerCat.includes('femenino') || lowerCat.includes('fem')) return rates.Femenino;
+  
+  return 0;
 };
 
 export const getRefereeSettings = (employeeNumber: string): RefereePayrollSettings => {

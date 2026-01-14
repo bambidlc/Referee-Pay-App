@@ -43,6 +43,9 @@ const DEFAULT_REFEREE_DATABASE: Referee[] = [
   { employeeNumber: "O629", fullName: "AMANDA PEREZ" },
   { employeeNumber: "2845", fullName: "ALEXIS MERCADO" },
   { employeeNumber: "7669", fullName: "CARMEN SANTIAGO" },
+  { employeeNumber: "9800", fullName: "ZERIMAR MERCADO" },
+  { employeeNumber: "9801", fullName: "PEPE MILAN" },
+  { employeeNumber: "9802", fullName: "ROBERTO RAMIREZ" },
 ];
 
 const DB_STORAGE_KEY = 'referee_database_v1';

@@ -22,6 +22,7 @@ import {
   saveSettings,
   getPayrollHistory,
   getStoredSettings,
+  getCategoryRate,
 } from './utils/payrollSettings';
 import { Loader2, Calendar, History, Plus, FileText, ArrowRight, X, LogIn, LogOut, User as UserIcon, Settings } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
@@ -181,18 +182,8 @@ function App() {
 
 
   const getDefaultRate = (category: string): number => {
-    const match = category.match(/(\d+)/);
-    if (!match) return 0;
-
-    const num = parseInt(match[1]);
-
-    if (num >= 6 && num <= 8) return 25;
-    if (num >= 9 && num <= 11) return 27;
-    if (num >= 12 && num <= 14) return 29;
-    if (num >= 15 && num <= 16) return 30;
-    if (num >= 17 && num <= 19) return 35;
-
-    return 0;
+    // Use the configurable category rates from settings
+    return getCategoryRate(category);
   };
 
   const handleFileSelect = (newFiles: File[]) => {

@@ -1,22 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Settings, DollarSign, Percent, Check, Search, User, Plus, Trash2, Edit2, Save, Database, AlertCircle } from 'lucide-react';
-import { 
-  getRefereeDatabase, 
+import { X, Settings, DollarSign, Percent, Check, Search, User, Plus, Trash2, Edit2, Save, Database, AlertCircle, Tag } from 'lucide-react';
+import {
+  getRefereeDatabase,
   addRefereeToDatabase,
   updateRefereeInDatabase,
   deleteRefereeFromDatabase,
-  type Referee 
+  type Referee
 } from '../utils/refereeMatcher';
 import {
   type RefereePayrollSettings,
   type GlobalPayrollSettings,
+  type CategoryRates,
   getGlobalSettings,
   saveGlobalSettings,
   saveRefereeSettings,
   getAllRefereeSettings,
   DEFAULT_GLOBAL_SETTINGS,
+  DEFAULT_CATEGORY_RATES,
   isAdminFeeExempt,
+  getCategoryRates,
+  saveCategoryRates,
 } from '../utils/payrollSettings';
 
 interface RefereeSettingsPanelProps {
@@ -30,8 +34,9 @@ export const RefereeSettingsPanel: React.FC<RefereeSettingsPanelProps> = ({
   onClose,
   onSettingsChange,
 }) => {
-  const [activeTab, setActiveTab] = useState<'global' | 'referees' | 'database'>('global');
+  const [activeTab, setActiveTab] = useState<'global' | 'rates' | 'referees' | 'database'>('global');
   const [globalSettings, setGlobalSettings] = useState<GlobalPayrollSettings>(DEFAULT_GLOBAL_SETTINGS);
+  const [categoryRates, setCategoryRates] = useState<CategoryRates>(DEFAULT_CATEGORY_RATES);
   const [refereeSettings, setRefereeSettings] = useState<Record<string, RefereePayrollSettings>>({});
   const [referees, setReferees] = useState<Referee[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,6 +52,7 @@ export const RefereeSettingsPanel: React.FC<RefereeSettingsPanelProps> = ({
   useEffect(() => {
     if (isOpen) {
       setGlobalSettings(getGlobalSettings());
+      setCategoryRates(getCategoryRates());
       setRefereeSettings(getAllRefereeSettings());
       setReferees(getRefereeDatabase());
     }
@@ -56,6 +62,13 @@ export const RefereeSettingsPanel: React.FC<RefereeSettingsPanelProps> = ({
     const updated = { ...globalSettings, [key]: value };
     setGlobalSettings(updated);
     saveGlobalSettings(updated);
+    onSettingsChange?.();
+  };
+
+  const handleCategoryRateChange = (category: keyof CategoryRates, value: number) => {
+    const updated = { ...categoryRates, [category]: value };
+    setCategoryRates(updated);
+    saveCategoryRates(updated);
     onSettingsChange?.();
   };
 
@@ -179,7 +192,20 @@ export const RefereeSettingsPanel: React.FC<RefereeSettingsPanelProps> = ({
             >
               <div className="flex items-center justify-center gap-2">
                 <Percent className="w-4 h-4" />
-                Global Settings
+                Global
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('rates')}
+              className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+                activeTab === 'rates'
+                  ? 'text-primary-600 border-b-2 border-primary-600 bg-primary-50/50'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Tag className="w-4 h-4" />
+                Category Rates
               </div>
             </button>
             <button
@@ -270,6 +296,83 @@ export const RefereeSettingsPanel: React.FC<RefereeSettingsPanelProps> = ({
                     </div>
                     <span className="text-sm">Non-editable (policy)</span>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'rates' && (
+              <div className="space-y-6">
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+                  <h3 className="font-semibold text-green-800 mb-1">Category Rates Configuration</h3>
+                  <p className="text-sm text-green-600">
+                    Set the default payment rate for each game category. These rates are used when calculating referee pay.
+                  </p>
+                </div>
+
+                {/* Named Categories */}
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                    Named Categories
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {(['Senior', 'Junior', 'Juvenil', 'Mini', 'Infantil', 'Femenino'] as const).map((category) => (
+                      <div key={category} className="bg-white border border-slate-200 rounded-xl p-4">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">{category}</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={categoryRates[category]}
+                            onChange={(e) => handleCategoryRateChange(category, parseFloat(e.target.value) || 0)}
+                            className="w-full px-4 py-2 pl-8 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Age-Based Categories */}
+                <div>
+                  <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                    Age-Based Categories (U-Series)
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {(['U6-U8', 'U9-U11', 'U12-U14', 'U15-U16', 'U17-U18'] as const).map((category) => (
+                      <div key={category} className="bg-white border border-slate-200 rounded-xl p-4">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">{category}</label>
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">$</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={categoryRates[category]}
+                            onChange={(e) => handleCategoryRateChange(category, parseFloat(e.target.value) || 0)}
+                            className="w-full px-4 py-2 pl-8 border border-slate-200 rounded-lg focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 outline-none"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Reset to Defaults */}
+                <div className="pt-4 border-t border-slate-200">
+                  <button
+                    onClick={() => {
+                      setCategoryRates(DEFAULT_CATEGORY_RATES);
+                      saveCategoryRates(DEFAULT_CATEGORY_RATES);
+                      onSettingsChange?.();
+                    }}
+                    className="text-sm text-slate-500 hover:text-primary-600 transition-colors"
+                  >
+                    Reset to default rates
+                  </button>
                 </div>
               </div>
             )}
