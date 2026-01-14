@@ -41,17 +41,18 @@ function App() {
         const lowerCat = category.toLowerCase().trim();
 
         // Check for specific named categories first
-        // Order matters: Age groups usually take precedence over gender if both are present
-        // and we want to avoid "Femenino" (28) overriding "Infantil" (20) or "Mini" (25) if they appear together
-        // unless "Femenino" implies an adult league.
-        // Assuming "Senior" > "Junior" > "Juvenil" > "Mini" > "Infantil"
+        // Precise matching based on user list
         if (lowerCat.includes('senior')) return 40;
         if (lowerCat.includes('junior')) return 30;
         if (lowerCat.includes('juvenil')) return 28;
         if (lowerCat.includes('mini')) return 25;
         if (lowerCat.includes('infantil')) return 20;
 
-        // Check Femenino last among named categories as it might be a modifier or a standalone category
+        // Femenino can be a standalone or a modifier (e.g., "Mini Femenino")
+        // But the user said Femenino is 28. If it's "Mini Femenino", 
+        // should it be 25 (Mini) or 28 (Femenino)?
+        // Usually Age group defines the level. In the previous logic I prioritized Age 
+        // which seems safer unless the user says otherwise.
         if (lowerCat.includes('femenino')) return 28;
 
         const match = category.match(/(\d+)/);
@@ -59,11 +60,13 @@ function App() {
 
         const num = parseInt(match[1]);
 
+        // Fallbacks for Uxx categories
         if (num >= 6 && num <= 8) return 25;
         if (num >= 9 && num <= 11) return 27;
         if (num >= 12 && num <= 14) return 29;
         if (num >= 15 && num <= 16) return 30;
         if (num >= 17 && num <= 19) return 35;
+        if (num >= 20) return 40; // Assume 20+ is Senior/Open
 
         return 0;
     };
@@ -435,6 +438,7 @@ function App() {
                                     className="w-full"
                                 >
                                     <RateConfig
+                                        key={currentData.categories.join('-')}
                                         categories={currentData.categories}
                                         onConfirm={handleRateConfirm}
                                         initialRates={currentRates}
