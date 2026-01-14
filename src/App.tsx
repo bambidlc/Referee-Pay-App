@@ -19,6 +19,22 @@ export interface HistoryItem {
     rates: Record<string, number>;
 }
 
+// Predefined categories with their default rates
+const PREDEFINED_CATEGORIES = [
+    { name: 'Mini', rate: 25 },
+    { name: 'Infantil', rate: 20 },
+    { name: 'Juvenil', rate: 28 },
+    { name: 'Junior', rate: 30 },
+    { name: 'Femenino', rate: 28 },
+    { name: 'Senior', rate: 40 },
+    { name: 'U6-U8', rate: 25 },
+    { name: 'U9-U11', rate: 27 },
+    { name: 'U12-U14', rate: 29 },
+    { name: 'U15-U16', rate: 30 },
+    { name: 'U17-U19', rate: 35 },
+    { name: 'U20+', rate: 40 }
+];
+
 function App() {
     const [step, setStep] = useState<'upload' | 'date' | 'config' | 'dashboard'>('upload');
     const [isLoading, setIsLoading] = useState(false);
@@ -91,6 +107,24 @@ function App() {
         }
     };
 
+    const mergeCategoriesWithDefaults = (fileCategories: string[]): string[] => {
+        // Start with predefined categories
+        const predefinedNames = PREDEFINED_CATEGORIES.map(c => c.name);
+        const mergedCategories = [...predefinedNames];
+        
+        // Add file categories that don't match predefined ones (case-insensitive)
+        fileCategories.forEach(fileCat => {
+            const isAlreadyIncluded = predefinedNames.some(
+                predefined => predefined.toLowerCase() === fileCat.toLowerCase()
+            );
+            if (!isAlreadyIncluded) {
+                mergedCategories.push(fileCat);
+            }
+        });
+        
+        return mergedCategories;
+    };
+
     const handleDateSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
@@ -124,7 +158,7 @@ function App() {
                 });
             }
 
-            const sortedCategories = Array.from(allCategories).sort((a, b) => {
+            const sortedFileCategories = Array.from(allCategories).sort((a, b) => {
                 const getVal = (cat: string) => {
                     const lower = cat.toLowerCase();
                     if (lower.includes('mini')) return 100;
@@ -136,20 +170,29 @@ function App() {
 
                     if (cat.endsWith('u')) return parseInt(cat.slice(0, -1));
                     if (cat.endsWith('uF')) return parseInt(cat.slice(0, -2)) + 0.5;
-                    return 0;
+                    return 30;
                 };
                 return getVal(a) - getVal(b);
             });
 
-            // Initialize Rates
+            // Merge with predefined categories
+            const allCategoriesForConfig = mergeCategoriesWithDefaults(sortedFileCategories);
+
+            // Initialize Rates for all categories (predefined + file-detected)
             const initialRates: Record<string, number> = {};
-            sortedCategories.forEach(cat => {
-                initialRates[cat] = getDefaultRate(cat);
+            PREDEFINED_CATEGORIES.forEach(({ name, rate }) => {
+                initialRates[name] = rate;
+            });
+            // Add rates for additional file categories not in predefined list
+            sortedFileCategories.forEach(cat => {
+                if (!initialRates[cat]) {
+                    initialRates[cat] = getDefaultRate(cat);
+                }
             });
 
             setCurrentData({
                 arbitrators: allArbitrators,
-                categories: sortedCategories
+                categories: allCategoriesForConfig
             });
             setCurrentRates(initialRates);
 
@@ -161,7 +204,7 @@ function App() {
                 files: currentFiles.map(f => f.name),
                 data: {
                     arbitrators: allArbitrators,
-                    categories: sortedCategories
+                    categories: allCategoriesForConfig
                 },
                 rates: initialRates
             };
