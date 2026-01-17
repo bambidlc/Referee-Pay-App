@@ -469,6 +469,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const categoryReportData = useMemo(() => {
     const categoriesFromSource = new Set<string>();
+    const categoryRates: Record<string, number> = {};
     const rows: Array<{
       employeeNumber: string;
       refereeName: string;
@@ -498,6 +499,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
             aggregated[key].categories[category] = (aggregated[key].categories[category] || 0) + count;
             categoriesFromSource.add(category);
           });
+
+          const refRates = ref.categoryRates || {};
+          Object.entries(refRates).forEach(([category, rate]) => {
+            if (!Number.isNaN(rate)) {
+              categoryRates[category] = rate;
+              categoriesFromSource.add(category);
+            }
+          });
         });
       });
 
@@ -521,11 +530,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
           categories: arb.categories || {},
         });
       });
+
+      Object.entries(rates).forEach(([category, rate]) => {
+        if (!Number.isNaN(rate)) {
+          categoryRates[category] = rate;
+        }
+      });
     }
 
     const categories = Array.from(categoriesFromSource).sort();
-    return { categories, rows, totalGames };
-  }, [sourceData, calculatedData]);
+    return { categories, rows, totalGames, categoryRates };
+  }, [sourceData, calculatedData, rates]);
+
+  const formatCategoryRate = (category: string) => {
+    const rate = categoryReportData.categoryRates[category];
+    if (rate === undefined) {
+      return 'Rate n/a';
+    }
+    return `$${rate.toFixed(2)}/game`;
+  };
 
   const handleCategoryReportExport = () => {
     if (categoryReportData.rows.length === 0 || categoryReportData.categories.length === 0) {
@@ -533,7 +556,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       return;
     }
 
-    const rows: Array<Record<string, string | number>> = categoryReportData.rows.map(ref => {
+    const dataRows: Array<Record<string, string | number>> = categoryReportData.rows.map(ref => {
       const row: Record<string, string | number> = {
         'Employee #': ref.employeeNumber || 'N/A',
         'Referee Name': ref.refereeName,
@@ -545,15 +568,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
       return row;
     });
 
+    const rateRow: Record<string, string | number> = {
+      'Employee #': '',
+      'Referee Name': 'Rate ($/game)',
+      'Total Games': '',
+    };
+    categoryReportData.categories.forEach(category => {
+      const rate = categoryReportData.categoryRates[category];
+      rateRow[category] = rate !== undefined ? rate : '';
+    });
+
     const totalsRow: Record<string, string | number> = {
       'Employee #': '',
       'Referee Name': 'TOTALS',
       'Total Games': categoryReportData.totalGames,
     };
     categoryReportData.categories.forEach(category => {
-      totalsRow[category] = rows.reduce((sum, row) => sum + Number(row[category] || 0), 0);
+      totalsRow[category] = dataRows.reduce((sum, row) => sum + Number(row[category] || 0), 0);
     });
-    rows.push(totalsRow);
+
+    const rows: Array<Record<string, string | number>> = [rateRow, ...dataRows, totalsRow];
 
     const ws = utils.json_to_sheet(rows);
     const wb = utils.book_new();
@@ -934,7 +968,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <th className="px-4 py-3 text-center font-semibold text-slate-600">Total Games</th>
                         {categoryReportData.categories.map(category => (
                           <th key={category} className="px-4 py-3 text-center font-semibold text-slate-600">
-                            {category}
+                            <div className="flex flex-col items-center gap-1">
+                              <span>{category}</span>
+                              <span className="text-xs font-normal text-slate-400">
+                                {formatCategoryRate(category)}
+                              </span>
+                            </div>
                           </th>
                         ))}
                       </tr>
