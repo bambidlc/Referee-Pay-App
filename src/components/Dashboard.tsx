@@ -59,6 +59,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [fines, setFines] = useState<Record<string, number>>({});
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [showSettings, setShowSettings] = useState(false);
+  const [showCategoryReport, setShowCategoryReport] = useState(false);
   const [settingsVersion, setSettingsVersion] = useState(0);
   const [selectedMonth, setSelectedMonth] = useState<string>(initialMonth); // For filtering history
   const [currentBatchId, setCurrentBatchId] = useState<string>(batchId);
@@ -466,6 +467,108 @@ export const Dashboard: React.FC<DashboardProps> = ({
     writeFile(wb, filename);
   };
 
+  const categoryReportData = useMemo(() => {
+    const categoriesFromSource = new Set<string>();
+    const rows: Array<{
+      employeeNumber: string;
+      refereeName: string;
+      totalGames: number;
+      categories: Record<string, number>;
+    }> = [];
+    let totalGames = 0;
+
+    if (sourceData.isHistoryView && sourceData.monthBatches) {
+      const aggregated: Record<string, typeof rows[number]> = {};
+
+      sourceData.monthBatches.forEach(batch => {
+        batch.referees.forEach(ref => {
+          const key = ref.employeeNumber;
+          if (!aggregated[key]) {
+            aggregated[key] = {
+              employeeNumber: ref.employeeNumber,
+              refereeName: ref.refereeName || ref.scheduleName,
+              totalGames: 0,
+              categories: {},
+            };
+          }
+
+          aggregated[key].totalGames += ref.games;
+          const categoryCounts = ref.categories || {};
+          Object.entries(categoryCounts).forEach(([category, count]) => {
+            aggregated[key].categories[category] = (aggregated[key].categories[category] || 0) + count;
+            categoriesFromSource.add(category);
+          });
+        });
+      });
+
+      Object.values(aggregated)
+        .sort((a, b) => a.refereeName.localeCompare(b.refereeName))
+        .forEach(ref => {
+          totalGames += ref.totalGames;
+          rows.push(ref);
+        });
+    } else {
+      calculatedData.forEach(arb => {
+        Object.keys(arb.categories || {}).forEach(category => categoriesFromSource.add(category));
+      });
+
+      calculatedData.forEach(arb => {
+        totalGames += arb.calculation.games;
+        rows.push({
+          employeeNumber: arb.employeeNumber || 'N/A',
+          refereeName: arb.displayName || arb.name,
+          totalGames: arb.calculation.games,
+          categories: arb.categories || {},
+        });
+      });
+    }
+
+    const categories = Array.from(categoriesFromSource).sort();
+    return { categories, rows, totalGames };
+  }, [sourceData, calculatedData]);
+
+  const handleCategoryReportExport = () => {
+    if (categoryReportData.rows.length === 0 || categoryReportData.categories.length === 0) {
+      alert('No category data available for this report.');
+      return;
+    }
+
+    const rows: Array<Record<string, string | number>> = categoryReportData.rows.map(ref => {
+      const row: Record<string, string | number> = {
+        'Employee #': ref.employeeNumber || 'N/A',
+        'Referee Name': ref.refereeName,
+        'Total Games': ref.totalGames,
+      };
+      categoryReportData.categories.forEach(category => {
+        row[category] = ref.categories[category] || 0;
+      });
+      return row;
+    });
+
+    const totalsRow: Record<string, string | number> = {
+      'Employee #': '',
+      'Referee Name': 'TOTALS',
+      'Total Games': categoryReportData.totalGames,
+    };
+    categoryReportData.categories.forEach(category => {
+      totalsRow[category] = rows.reduce((sum, row) => sum + Number(row[category] || 0), 0);
+    });
+    rows.push(totalsRow);
+
+    const ws = utils.json_to_sheet(rows);
+    const wb = utils.book_new();
+    utils.book_append_sheet(wb, ws, 'Category Report');
+
+    let filename = 'Category_Report.xlsx';
+    if (selectedMonth) {
+      filename = `Category_Report_${selectedMonth}.xlsx`;
+    } else if (dateRange?.start && dateRange?.end) {
+      filename = `Category_Report_${dateRange.start}_to_${dateRange.end}.xlsx`;
+    }
+
+    writeFile(wb, filename);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -542,6 +645,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
             >
               <Download className="w-4 h-4" />
               Export {selectedMonth ? 'Month' : 'Batch'}
+            </button>
+            <button
+              onClick={() => setShowCategoryReport(prev => !prev)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all border ${showCategoryReport
+                ? 'bg-primary-50 text-primary-700 border-primary-200'
+                : 'bg-white text-slate-600 hover:text-slate-800 hover:bg-slate-50 border-slate-200'
+                }`}
+            >
+              <FileText className="w-4 h-4" />
+              {showCategoryReport ? 'Hide Category Report' : 'Category Report'}
             </button>
           </div>
         </div>
@@ -792,6 +905,78 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </table>
             </div>
           </div>
+
+          {showCategoryReport && (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border-b border-slate-100">
+                <div>
+                  <h3 className="font-semibold text-slate-800">Category Report</h3>
+                  <p className="text-sm text-slate-500">All categories in this batch and the categories each referee worked.</p>
+                </div>
+                <button
+                  onClick={handleCategoryReportExport}
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-white bg-primary-600 hover:bg-primary-700 rounded-lg transition-colors shadow-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Report
+                </button>
+              </div>
+              {categoryReportData.categories.length === 0 ? (
+                <div className="p-6 text-center text-slate-500">
+                  No category data available for this report.
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3 text-left font-semibold text-slate-600">Referee</th>
+                        <th className="px-4 py-3 text-center font-semibold text-slate-600">Total Games</th>
+                        {categoryReportData.categories.map(category => (
+                          <th key={category} className="px-4 py-3 text-center font-semibold text-slate-600">
+                            {category}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {categoryReportData.rows.map(ref => (
+                        <tr key={`${ref.employeeNumber}-${ref.refereeName}`} className="hover:bg-slate-50/50">
+                          <td className="px-4 py-3">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-slate-900">{ref.refereeName}</span>
+                              {ref.employeeNumber && (
+                                <span className="text-xs text-slate-400">#{ref.employeeNumber}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-center font-medium text-slate-700">
+                            {ref.totalGames}
+                          </td>
+                          {categoryReportData.categories.map(category => (
+                            <td key={category} className="px-4 py-3 text-center text-slate-700">
+                              {ref.categories[category] || 0}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-slate-100 font-semibold">
+                      <tr>
+                        <td className="px-4 py-3">Totals</td>
+                        <td className="px-4 py-3 text-center">{categoryReportData.totalGames}</td>
+                        {categoryReportData.categories.map(category => (
+                          <td key={category} className="px-4 py-3 text-center">
+                            {categoryReportData.rows.reduce((sum, row) => sum + (row.categories[category] || 0), 0)}
+                          </td>
+                        ))}
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Category Rates Editor */}
           {!selectedMonth && (
