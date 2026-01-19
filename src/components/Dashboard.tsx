@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Download, Users, DollarSign, Trophy, Settings,
@@ -63,6 +63,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [settingsVersion, setSettingsVersion] = useState(0);
   const [selectedMonth, setSelectedMonth] = useState<string>(initialMonth); // For filtering history
   const [currentBatchId, setCurrentBatchId] = useState<string>(batchId);
+  const categoryReportRef = useRef<HTMLDivElement | null>(null);
 
   // Update selected month if initialMonth changes
   useEffect(() => {
@@ -75,6 +76,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
   useEffect(() => {
     if (batchId) setCurrentBatchId(batchId);
   }, [batchId]);
+
+  useEffect(() => {
+    if (showCategoryReport) {
+      categoryReportRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [showCategoryReport]);
 
 
 
@@ -959,7 +966,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
 
           {showCategoryReport && (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div ref={categoryReportRef} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border-b border-slate-100">
                 <div>
                   <h3 className="font-semibold text-slate-800">Category Report</h3>
