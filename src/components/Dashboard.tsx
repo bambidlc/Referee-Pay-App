@@ -468,6 +468,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const categoryReportData = useMemo(() => {
+    const sortCategories = (a: string, b: string) => {
+      const matchA = a.match(/(\d+)/);
+      const matchB = b.match(/(\d+)/);
+      const numA = matchA ? parseInt(matchA[1], 10) : Number.NaN;
+      const numB = matchB ? parseInt(matchB[1], 10) : Number.NaN;
+
+      const hasNumA = Number.isFinite(numA);
+      const hasNumB = Number.isFinite(numB);
+
+      if (hasNumA && hasNumB) {
+        if (numA !== numB) return numA - numB;
+        return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+      }
+      if (hasNumA) return -1;
+      if (hasNumB) return 1;
+      return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+    };
+
     const categoriesFromSource = new Set<string>();
     const categoryRates: Record<string, number> = {};
     const rows: Array<{
@@ -538,7 +556,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       });
     }
 
-    const categories = Array.from(categoriesFromSource).sort();
+    const categories = Array.from(categoriesFromSource).sort(sortCategories);
     return { categories, rows, totalGames, categoryRates };
   }, [sourceData, calculatedData, rates]);
 
