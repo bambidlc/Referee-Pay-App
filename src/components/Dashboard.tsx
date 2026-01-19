@@ -538,32 +538,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       });
     }
 
-    const categorySortInfo = (category: string) => {
-      const trimmed = category.trim();
-      const exactUMatch = trimmed.match(/^(\d{1,2})u(f)?$/i);
-      if (exactUMatch) {
-        const num = Number(exactUMatch[1]);
-        if (num >= 6 && num <= 19) {
-          return { group: 0, order: num + (exactUMatch[2] ? 0.5 : 0), label: trimmed };
-        }
-      }
-
-      const numMatch = trimmed.match(/(\d{1,2})/);
-      const numericOrder = numMatch ? Number(numMatch[1]) : Number.POSITIVE_INFINITY;
-      return { group: 1, order: numericOrder, label: trimmed };
-    };
-
-    const categories = Array.from(categoriesFromSource).sort((a, b) => {
-      const aInfo = categorySortInfo(a);
-      const bInfo = categorySortInfo(b);
-      if (aInfo.group !== bInfo.group) {
-        return aInfo.group - bInfo.group;
-      }
-      if (aInfo.order !== bInfo.order) {
-        return aInfo.order - bInfo.order;
-      }
-      return aInfo.label.localeCompare(bInfo.label);
-    });
+    const categories = Array.from(categoriesFromSource).sort();
     return { categories, rows, totalGames, categoryRates };
   }, [sourceData, calculatedData, rates]);
 
