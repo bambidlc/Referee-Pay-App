@@ -23,6 +23,7 @@ import {
   clearMonth,
   deletePayrollBatch,
 } from '../utils/payrollSettings';
+import { normalizeCategoryCounts, normalizeCategoryLabel } from '../utils/category';
 import { RefereeSettingsPanel } from './RefereeSettingsPanel';
 
 interface DashboardProps {
@@ -503,6 +504,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }> = [];
     let totalGames = 0;
 
+    const addCategoryRate = (category: string, rate: number) => {
+      if (Number.isNaN(rate)) return;
+      const normalized = normalizeCategoryLabel(category);
+      if (categoryRates[normalized] === undefined) {
+        categoryRates[normalized] = rate;
+      }
+      categoriesFromSource.add(normalized);
+    };
+
     if (sourceData.isHistoryView && sourceData.monthBatches) {
       const aggregated: Record<string, typeof rows[number]> = {};
 
@@ -519,7 +529,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           }
 
           aggregated[key].totalGames += ref.games;
-          const categoryCounts = ref.categories || {};
+          const categoryCounts = normalizeCategoryCounts(ref.categories || {});
           Object.entries(categoryCounts).forEach(([category, count]) => {
             aggregated[key].categories[category] = (aggregated[key].categories[category] || 0) + count;
             categoriesFromSource.add(category);
@@ -527,10 +537,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           const refRates = ref.categoryRates || {};
           Object.entries(refRates).forEach(([category, rate]) => {
-            if (!Number.isNaN(rate)) {
-              categoryRates[category] = rate;
-              categoriesFromSource.add(category);
-            }
+            addCategoryRate(category, rate);
           });
         });
       });
@@ -543,23 +550,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
         });
     } else {
       calculatedData.forEach(arb => {
-        Object.keys(arb.categories || {}).forEach(category => categoriesFromSource.add(category));
-      });
-
-      calculatedData.forEach(arb => {
+        const normalizedCategories = normalizeCategoryCounts(arb.categories || {});
+        Object.keys(normalizedCategories).forEach(category => categoriesFromSource.add(category));
         totalGames += arb.calculation.games;
         rows.push({
           employeeNumber: arb.employeeNumber || 'N/A',
           refereeName: arb.displayName || arb.name,
           totalGames: arb.calculation.games,
-          categories: arb.categories || {},
+          categories: normalizedCategories,
         });
       });
 
       Object.entries(rates).forEach(([category, rate]) => {
-        if (!Number.isNaN(rate)) {
-          categoryRates[category] = rate;
-        }
+        addCategoryRate(category, rate);
       });
     }
 
