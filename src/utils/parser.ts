@@ -1,5 +1,6 @@
 import { read, utils } from 'xlsx';
 import { type Referee } from './refereeMatcher';
+import { normalizeCategoryLabel } from './category';
 
 export interface ArbitratorStats {
     name: string;                    // Original name from schedule
@@ -31,7 +32,7 @@ export const parseSchedule = async (file: File): Promise<ParseResult> => {
         // Logic from python script:
         // if len(row) >= 5 and row[0] != 'TORNEO' and row[1] and row[2] and row[4]:
         if (row.length >= 5 && row[0] !== 'TORNEO' && row[1] && row[2] && row[4]) {
-            const category = String(row[4]).trim();
+            const category = normalizeCategoryLabel(String(row[4]));
             categories.add(category);
 
             const processArbitrators = (cellValue: any) => {
